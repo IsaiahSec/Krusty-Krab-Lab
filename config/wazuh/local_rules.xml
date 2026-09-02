@@ -1,0 +1,212 @@
+<group name="local,">
+
+  <!-- ============================================================
+       BASE RULES - assign Sysmon groups directly, bypassing
+       the broken 61600 chain in 0595-win-sysmon_rules.xml
+       ============================================================ -->
+
+  <rule id="100050" level="0">
+    <decoded_as>json</decoded_as>
+    <field name="win.system.channel">Microsoft-Windows-Sysmon/Operational</field>
+    <field name="win.system.eventID">^11$</field>
+    <group>sysmon_event_11,</group>
+    <description>Sysmon EID 11 base rule - file created</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="100051" level="0">
+    <decoded_as>json</decoded_as>
+    <field name="win.system.channel">Microsoft-Windows-Sysmon/Operational</field>
+    <field name="win.system.eventID">^13$</field>
+    <group>sysmon_event_13,</group>
+    <description>Sysmon EID 13 base rule - registry value set</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <!-- ============================================================
+       INFRASTRUCTURE WHITELIST
+       ============================================================ -->
+
+  <rule id="100001" level="0">
+    <if_group>sysmon_eid11_detections</if_group>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)C:\\Windows\\Temp\\(Sysmon64\.exe|sysmonconfig\.xml|sysmon-install\.log)$</field>
+    <description>Whitelist: Sysmon installer file dropped by GPO script</description>
+  </rule>
+
+  <rule id="100002" level="0">
+    <if_group>sysmon_eid11_detections</if_group>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)C:\\Windows\\Temp\\(wazuh-agent\.msi|wazuh-install\.log)$</field>
+    <description>Whitelist: Wazuh installer file dropped by GPO script</description>
+  </rule>
+
+  <rule id="100003" level="0">
+    <if_group>sysmon_eid11_detections</if_group>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)C:\\Windows\\Temp\\phish-deploy\.log$</field>
+    <description>Whitelist: Phishing sim deployment log</description>
+  </rule>
+
+  <rule id="100004" level="0">
+    <if_group>sysmon_eid11_detections</if_group>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)C:\\Scripts\\phishing_simulation\.ps1$</field>
+    <description>Whitelist: Phishing simulation script copied to C:\Scripts</description>
+  </rule>
+
+  <rule id="100005" level="0">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.parentCommandLine" type="pcre2">(?i)(install-sysmon|install-wazuh|deploy-phishing|phishing_simulation)\.ps1</field>
+    <description>Whitelist: Activity parented by known GPO deployment scripts</description>
+  </rule>
+
+  <rule id="100006" level="0">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.image" type="pcre2">(?i)C:\\Windows\\Temp\\Sysmon64\.exe$</field>
+    <description>Whitelist: Sysmon64 installer executing from Temp during GPO deploy</description>
+  </rule>
+
+  <rule id="100007" level="0">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.image" type="pcre2">(?i)msiexec\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)wazuh-agent\.msi</field>
+    <description>Whitelist: msiexec installing Wazuh agent via GPO</description>
+  </rule>
+
+  <!-- Scheduled task whitelist - Security channel direct match -->
+  <rule id="100008" level="0">
+    <decoded_as>json</decoded_as>
+    <field name="win.system.channel">Security</field>
+    <field name="win.system.eventID" type="pcre2">^4698$|^4702$</field>
+    <field name="win.eventdata.taskName" type="pcre2">(?i)KKPhishSim</field>
+    <description>Whitelist: Scheduled task created by phishing simulation deployer</description>
+  </rule>
+
+  <!-- Phishing sim random temp PS1 files -->
+  <rule id="100030" level="0">
+    <if_group>sysmon_eid11_detections</if_group>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)(C:\\Windows\\Temp|C:\\Users\\[^\\]+\\AppData\\Local\\Temp)\\[a-z0-9]+\.[a-z0-9]+\.ps1$</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)powershell\.exe$</field>
+    <description>Whitelist: Phishing sim random temp PS1 file</description>
+  </rule>
+
+  <!-- Suppress built-in rules 92201 and 92213 for phishing sim temp files -->
+  <rule id="100031" level="0" overwrite="yes">
+    <if_sid>92201</if_sid>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)(C:\\Windows\\Temp|C:\\Users\\[^\\]+\\AppData\\Local\\Temp)\\[a-z0-9]+\.[a-z0-9]+\.ps1$</field>
+    <description>Whitelist: Phishing sim random temp PS1 file - suppress 92201</description>
+  </rule>
+
+  <rule id="100032" level="0" overwrite="yes">
+    <if_sid>92213</if_sid>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)(C:\\Windows\\Temp|C:\\Users\\[^\\]+\\AppData\\Local\\Temp)\\[a-z0-9]+\.[a-z0-9]+\.ps1$</field>
+    <description>Whitelist: Phishing sim random temp PS1 file - suppress 92213</description>
+  </rule>
+
+  <!-- ============================================================
+       ACTIVE RESPONSE TRIGGERS
+       ============================================================ -->
+
+  <!-- Brute force -->
+  <rule id="100010" level="12" frequency="5" timeframe="60">
+    <if_matched_sid>60122</if_matched_sid>
+    <same_source_ip />
+    <description>Active Response: Brute force - 5+ logon failures in 60s from same IP</description>
+    <mitre><id>T1110</id></mitre>
+  </rule>
+
+  <!-- Pass-the-hash - Security channel direct match -->
+  <rule id="100011" level="12">
+    <decoded_as>json</decoded_as>
+    <field name="win.system.channel">Security</field>
+    <field name="win.system.eventID">^4624$</field>
+    <field name="win.eventdata.logonType" type="pcre2">^3$</field>
+    <field name="win.eventdata.authenticationPackageName" type="pcre2">(?i)NTLM</field>
+    <field name="win.eventdata.targetUserName" type="pcre2">(?i)(administrator|krabs|sandy|spongebob|squidward)</field>
+    <description>Active Response: NTLM network logon to privileged account - possible pass-the-hash</description>
+    <mitre><id>T1550.002</id></mitre>
+  </rule>
+
+  <!-- Executable dropped in suspicious location - chains off 92207 which is confirmed firing -->
+  <rule id="100012" level="12">
+    <if_sid>92207</if_sid>
+    <description>Active Response: Executable dropped in suspicious location</description>
+    <mitre><id>T1204.002</id></mitre>
+  </rule>
+
+  <!-- Process launched from suspicious location (EID 1) -->
+  <rule id="100013" level="13">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.image" type="pcre2">(?i)(C:\\Users\\[^\\]+\\Downloads\\|C:\\Users\\[^\\]+\\AppData\\Local\\Temp\\|C:\\Users\\Public\\|C:\\Temp\\)</field>
+    <description>Active Response: Process executed from suspicious path - likely phishing payload</description>
+    <mitre><id>T1204.002</id></mitre>
+  </rule>
+
+  <!-- Office/browser spawning scripting engine (EID 1) -->
+  <rule id="100014" level="13">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)(WINWORD|EXCEL|POWERPNT|outlook|msedge|chrome|firefox|iexplore)\.exe$</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)(powershell|cmd|wscript|cscript|mshta|rundll32|regsvr32)\.exe$</field>
+    <description>Active Response: Office/browser spawned scripting engine - phishing delivery</description>
+    <mitre><id>T1566.001</id><id>T1059.001</id></mitre>
+  </rule>
+
+  <!-- PowerShell keylogger Win32 API (EID 1) -->
+  <rule id="100015" level="13">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.image" type="pcre2">(?i)powershell\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(GetAsyncKeyState|SetWindowsHookEx|GetForegroundWindow|keybd_event|mouse_event|GetClipboardData|OpenClipboard)</field>
+    <description>Active Response: PowerShell invoking keyboard/clipboard Win32 API - likely keylogger</description>
+    <mitre><id>T1056.001</id></mitre>
+  </rule>
+
+  <!-- Known keylogger or RAT process name (EID 1) -->
+  <rule id="100016" level="13">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.image" type="pcre2">(?i)(keylog|pykeylogger|revealer|spyrix|ardamax|refog|hooklogger|winspy|bladabindi|njrat|asyncrat|remcos|nanocore|xworm)\.exe$</field>
+    <description>Active Response: Known keylogger or RAT executable detected</description>
+    <mitre><id>T1056.001</id><id>T1219</id></mitre>
+  </rule>
+
+  <!-- Suspicious path loading user32/kernel32 (EID 7) -->
+  <rule id="100017" level="12">
+    <if_group>sysmon_event7</if_group>
+    <field name="win.eventdata.imageLoaded" type="pcre2">(?i)(user32\.dll|kernel32\.dll)$</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)(Downloads|Temp|Public|AppData)</field>
+    <description>Active Response: Process from suspicious path loading user32/kernel32</description>
+    <mitre><id>T1056.001</id></mitre>
+  </rule>
+
+  <!-- Scheduled task persistence - Security channel direct match -->
+  <rule id="100018" level="11">
+    <decoded_as>json</decoded_as>
+    <field name="win.system.channel">Security</field>
+    <field name="win.system.eventID">^4698$</field>
+    <field name="win.eventdata.taskName" type="pcre2">(?!.*KKPhishSim).*</field>
+    <field name="win.eventdata.subjectUserName" type="pcre2">(?!.*\$$)</field>
+    <description>Active Response: Scheduled task created by non-system user - possible persistence</description>
+    <mitre><id>T1053.005</id></mitre>
+  </rule>
+
+  <!-- Registry run key - chains off 92300 which is confirmed in ruleset -->
+  <rule id="100019" level="12">
+    <if_sid>92300</if_sid>
+    <description>Active Response: Registry run key modified - possible persistence</description>
+    <mitre><id>T1547.001</id></mitre>
+  </rule>
+
+  <!-- net.exe domain enumeration (EID 1) -->
+  <rule id="100020" level="11">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.image" type="pcre2">(?i)net1?\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(user|group|localgroup|accounts|view|use).*(\/domain|domain)</field>
+    <description>Active Response: net.exe domain enumeration - possible recon</description>
+    <mitre><id>T1069.002</id><id>T1087.002</id></mitre>
+  </rule>
+
+  <!-- Network scanner (EID 1) -->
+  <rule id="100021" level="11">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.image" type="pcre2">(?i)(nmap|masscan|zenmap|angry.?ip)\.exe$</field>
+    <description>Active Response: Network scanner executed on domain-joined machine</description>
+    <mitre><id>T1046</id></mitre>
+  </rule>
+
+</group>

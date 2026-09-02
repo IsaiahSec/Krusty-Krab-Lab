@@ -1,0 +1,103 @@
+# Krusty Krab Lab — .gitignore
+# Prevents accidental commits of credentials, certs, and platform clutter.
+
+# ============================================================
+# Credentials and secrets — never commit these
+# ============================================================
+*.key
+*.pem
+*.crt
+*.cer
+*.pfx
+*.p12
+.env
+.env.*
+secrets.json
+credentials.txt
+api_keys.txt
+
+# ============================================================
+# OpenVPN client/server configs and cert material
+# ============================================================
+# Client configs contain inline cert blocks tied to a specific OpenVPN
+# server. Never commit these. Templates without certs are fine if named
+# explicitly (e.g., client.conf.template) and reviewed manually.
+*.ovpn
+**/openvpn/client/
+**/openvpn/server/
+**/openvpn/ccd/
+**/openvpn/easy-rsa/
+tls-crypt.key
+ta.key
+dh.pem
+ca.key
+crl.pem
+server_*.key
+server_*.crt
+
+# ============================================================
+# Local script artifacts and logs
+# ============================================================
+*.log
+ar-test.log
+active-responses.log
+status-server.log
+
+# ============================================================
+# Wazuh / agent runtime files
+# ============================================================
+ossec.conf.bak
+local_rules.xml.bak
+client.keys
+
+# ============================================================
+# OS-specific clutter
+# ============================================================
+.DS_Store
+Thumbs.db
+desktop.ini
+*.lnk
+ehthumbs.db
+
+# ============================================================
+# Editor and IDE files
+# ============================================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.settings/
+
+# ============================================================
+# Archive / binary files we don't host in the repo
+# ============================================================
+*.iso
+*.vdi
+*.vhd
+*.vhdx
+*.vmdk
+*.ova
+*.zip
+*.tar.gz
+*.tgz
+*.7z
+*.rar
+*.msi
+*.exe
+# Exception: small batch scripts named .cmd (kill-process-agent.cmd) are
+# tracked. .exe and .msi installers should never be committed.
+
+# ============================================================
+# Python / build artifacts (in case any utility scripts are added)
+# ============================================================
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+build/
+dist/
+
+docs\gallery.pptx
