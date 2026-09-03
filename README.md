@@ -92,7 +92,7 @@ This repository hosts the scripts and configuration files referenced in the repo
 
 The user passwords used throughout the scripts (`KrustyAdmin!`, `KrustyFryCook!`, `KrustyAcorns!`, `KrustyAnchor!`, `KrustyKlarinet!`, `KrustyPants!`) are documented in the report's Section 2.5.1.3.3 user table. These exist only within a disposable lab AD instance and have no meaning outside the simulated environment. If you replicate the lab, you may keep them as-is so the scripts run unmodified, or substitute your own and update the scripts accordingly.
 
-For the 'phishing\_simulation...' scripts, you will need to provide your own Anthropic API key — the script reads it from the `ANTHROPIC\_API\_KEY` environment variable on each machine where it runs. See the comments at the top of the script.
+For the 'phishing_simulation...' scripts, you will need to provide your own Anthropic API key — open the script and replace the placeholder value assigned to `$AnthropicApiKey` (marked `### EDIT 1` near the top of the file) with your own key.
 
 ## Disclaimer
 
