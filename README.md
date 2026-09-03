@@ -7,8 +7,8 @@ This repository accompanies the capstone project ***From Vulnerable to Hardened:
 ## Authors
 
 * Isaiah Stewart ([@IsaiahSec](https://github.com/IsaiahSec))
-* Joshua Grygus
-* Yannice Konyaole
+* Joshua Grygus ([@Coffee-Kaiju](https://github.com/Coffee-kaiju))
+* Yannice Konyaole ([@YKonyaole](https://github.com/ykonyaole))
 
 Faculty advisor: Dr. Enes Erdin
 
